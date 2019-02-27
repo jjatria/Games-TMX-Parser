@@ -103,9 +103,6 @@ for any map with a simple path drawn on it.
 
 =head1 TODO
 
-No support for base64 or compression of maps, uncheck the correct check boxes
-in Tiled before you save.
-
 No support for object layers.
 
 =head1 DEVELOPMENT
@@ -152,7 +149,10 @@ has map => (
     lazy    => 1,
     handles => ['get_layer'],
     default => sub {
-        Games::TMX::Parser::Map->new( el => $_[0]->twig->root );
+        Games::TMX::Parser::Map->new(
+            el   => $_[0]->twig->root,
+            _dir => $_[0]->map_dir,
+        );
     },
 );
 

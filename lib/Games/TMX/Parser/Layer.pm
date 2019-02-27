@@ -3,6 +3,8 @@ package Games::TMX::Parser::Layer;
 use Moo;
 use Games::TMX::Parser::Cell;
 use List::MoreUtils qw(natatime);
+use MIME::Base64 'decode_base64';
+use Compress::Zlib;
 
 extends 'Games::TMX::Parser::MapElement';
 
@@ -22,8 +24,35 @@ has rows => (
     lazy    => 1,
     default => sub {
         my $self = shift;
+
+        my $data = $self->first_child('data');
+        my $encoding    = $data->att('encoding') // '';
+        my $compression = $data->att('compression') // '';
+
+        my @element_ids;
+
+        if ( $encoding eq 'csv' ) {
+            @element_ids = map { chomp; $_ } split /,/, $data->text;
+        }
+        elsif ( $encoding eq 'base64' ) {
+            my $decoded = decode_base64 $data->text;
+
+            if ( $compression eq 'zlib' ) {
+                $decoded = Compress::Zlib::uncompress $decoded;
+            }
+            elsif ( $compression eq 'gzip' ) {
+                $decoded = Compress::Zlib::memGunzip $decoded;
+            }
+
+            @element_ids = unpack 'V*', $decoded;
+        }
+
+        unless (@element_ids) {
+            @element_ids = map { $_->att('gid') } $data->children('tile');
+        }
+
         my @rows;
-        my $it = natatime $self->width, $self->first_child->children('tile');
+        my $it = natatime $self->width, @element_ids;
         my $y = 0;
 
         while ( my @row = $it->() ) {
@@ -31,12 +60,12 @@ has rows => (
 
             push @rows, [
                 map {
-                    my $el = $_;
-                    my $id = $el->att('gid');
-                    my $tile;
-                    $tile = $self->get_tile($id) if $id;
-                    Games::TMX::Parser::Cell->new
-                        (x => $x++, y => $y, tile => $tile, layer => $self)
+                    Games::TMX::Parser::Cell->new(
+                        x     => $x++,
+                        y     => $y,
+                        tile  => $self->get_tile($_),
+                        layer => $self
+                    )
                 } @row
             ];
 
