@@ -133,28 +133,39 @@ at your option, any later version of Perl 5 you may have available.
 
 package Games::TMX::Parser;
 
-use Moose;
+use Moo;
 use Games::TMX::Parser::Map;
 use File::Spec;
 use XML::Twig;
+use Types::Standard qw( Str );
 
-has [qw(map_dir map_file)] => (is => 'ro', isa => 'Str', required => 1);
+use namespace::clean;
 
-has map => (is => 'ro', lazy_build => 1, handles => [qw(get_layer)]);
+has [qw( map_dir map_file )] => (
+    is       => 'ro',
+    isa      => Str,
+    required => 1,
+);
 
-has twig => (is => 'ro', lazy_build => 1);
+has map => (
+    is      => 'ro',
+    lazy    => 1,
+    handles => ['get_layer'],
+    default => sub {
+        Games::TMX::Parser::Map->new( el => $_[0]->twig->root );
+    },
+);
 
-sub _build_twig {
-    my $self = shift;
-    my $twig = XML::Twig->new;
-    $twig->parsefile
-        ( File::Spec->catfile($self->map_dir, $self->map_file) );
-    return $twig;
-}
-
-sub _build_map {
-    my $self = shift;
-    return Games::TMX::Parser::Map->new(el => $self->twig->root);
-}
+has twig => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        my $twig = XML::Twig->new;
+        $twig->parsefile(
+            File::Spec->catfile( $_[0]->map_dir, $_[0]->map_file)
+        );
+        return $twig;
+    },
+);
 
 1;

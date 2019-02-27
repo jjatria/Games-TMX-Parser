@@ -1,40 +1,61 @@
 package Games::TMX::Parser::Map;
 
-use Moose;
+use Moo;
 use Games::TMX::Parser::Layer;
 use Games::TMX::Parser::TileSet;
 
 extends 'Games::TMX::Parser::MapElement';
 
-has [qw(layers tilesets width height tile_width tile_height tiles_by_id)] =>
-    (is => 'ro', lazy_build => 1);
+use namespace::clean;
 
-sub _build_layers {
-    my $self = shift;
-    return {map { $_->att('name') =>
-        Games::TMX::Parser::Layer->new(el => $_, map => $self)
-    } $self->children('layer') };
+has layers => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        return {
+            map {
+                $_->att('name') => Games::TMX::Parser::Layer->new(
+                    el => $_,
+                    map => $_[0],
+                )
+            } $_[0]->children('layer')
+        };
+    },
+);
+
+has tilesets => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        return [
+            map {
+                Games::TMX::Parser::TileSet->new( el => $_ )
+            } $_[0]->children('tileset')
+        ];
+    },
+);
+
+has tiles_by_id => (
+    is      => 'ro',
+    lazy    => 1,
+    default => sub {
+        my @tiles = map { @{ $_->tiles } } @{ $_[0]->tilesets };
+        return { map { $_->id => $_ } @tiles };
+    },
+);
+
+for my $name (qw( width height tile_width tile_height )) {
+    my $attribute = $name;
+    $attribute =~ s/_//g;
+    has $name => (
+        is      => 'ro',
+        lazy    => 1,
+        default => sub { shift->att($attribute) },
+    );
 }
 
-sub _build_tiles_by_id {
-    my $self  = shift;
-    my @tiles = map { @{$_->tiles} } @{ $self->tilesets };
-    return {map { $_->id => $_ } @tiles};
-}
+sub get_layer { shift->layers->{ +pop } }
 
-sub _build_tilesets {
-    my $self = shift;
-    return [map {
-        Games::TMX::Parser::TileSet->new(el => $_)
-    } $self->children('tileset') ];
-}
-
-sub _build_width       { shift->att('width') }
-sub _build_height      { shift->att('height') }
-sub _build_tile_width  { shift->att('tile_width') }
-sub _build_tile_height { shift->att('tile_height') }
-
-sub get_layer { shift->layers->{pop()} }
-sub get_tile  { shift->tiles_by_id->{pop()} }
+sub get_tile  { shift->tiles_by_id->{ +pop } }
 
 1;

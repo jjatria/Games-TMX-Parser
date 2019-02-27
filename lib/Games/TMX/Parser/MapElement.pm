@@ -1,9 +1,13 @@
 package Games::TMX::Parser::MapElement;
 
-use Moose;
+use Moo;
 
-has el => (is => 'ro', required => 1, handles => [qw(
-    att att_exists first_child children print
-)]);
+has el => (
+    is       => 'ro',
+    required => 1,
+    handles  => [qw(
+        att att_exists first_child children print
+    )],
+);
 
 1;

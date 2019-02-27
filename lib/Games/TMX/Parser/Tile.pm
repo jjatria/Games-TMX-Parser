@@ -1,15 +1,19 @@
 package Games::TMX::Parser::Tile;
 
-use Moose;
+use Moo;
+use Types::Standard qw( Int HashRef );
 
-has id      => (is => 'ro', isa => 'Int', required => 1);
-has tileset => (is => 'ro', weak_ref => 1, required => 1);
+use namespace::clean;
 
-has properties => (is => 'ro', isa => 'HashRef', default => sub { {} });
+has id      => ( is => 'ro', required => 1, isa => Int );
+has tileset => ( is => 'ro', required => 1, weak_ref => 1 );
 
-sub get_prop {
-    my ($self, $name) = @_;
-    return $self->properties->{$name};
-}
+has properties => (
+    is => 'ro',
+    isa => HashRef,
+    default => sub { {} },
+);
+
+sub get_prop { shift->properties->{ +shift } }
 
 1;
