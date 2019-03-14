@@ -79,7 +79,7 @@ want to read in Perl. Then in your Perl game, read the map and use:
 
     my @cells = $map->get_layer('layer_with_stuff')
                     ->find_cells_with_property('my_special_tile_marker');
- 
+
 To find your special cells (spawn points, enemy locations, etc.).
 
 Draw a layer by iteating over:
@@ -179,9 +179,19 @@ has [qw(layers tilesets width height tile_width tile_height tiles_by_id)] =>
 
 sub _build_layers {
     my $self = shift;
-    return {map { $_->att('name') =>
-        Games::TMX::Parser::Layer->new(el => $_, map => $self)
-    } $self->children('layer') };
+
+    my %layers;
+    my $index = 0;
+
+    for my $layer ( $self->children('layer') ) {
+        $layers{ $layer->att('name') } = Games::TMX::Parser::Layer->new(
+            el    => $layer,
+            map   => $self,
+            index => $index++,
+        );
+    }
+
+    return \%layers;
 }
 
 sub _build_tiles_by_id {
@@ -205,6 +215,15 @@ sub _build_tile_height { shift->att('tile_height') }
 sub get_layer { shift->layers->{pop()} }
 sub get_tile  { shift->tiles_by_id->{pop()} }
 
+has ordered_layers => (
+    is => 'ro',
+    init_arg => undef,
+    lazy => 1,
+    default => sub {
+        [ sort { $a->index <=> $b->index } values %{ shift->layers } ];
+    },
+);
+
 # ------------------------------------------------------------------------------
 
 package Games::TMX::Parser::TileSet;
@@ -226,7 +245,7 @@ sub _build_tiles {
         my $el = $_;
         my $id = $first_gid + $el->att('id');
         my $properties = {map {
-           $_->att('name'), $_->att('value') 
+           $_->att('name'), $_->att('value')
         } $el->first_child('properties')->children};
         my $tile = Games::TMX::Parser::Tile->new
             (id => $id, properties => $properties, tileset => $self);
@@ -240,7 +259,7 @@ sub _build_tiles {
     while (my @ids = $it->()) {
         for my $id (@ids) {
             my $gid = $first_gid + $id;
-            my $tile = $prop_tiles->{$gid} || 
+            my $tile = $prop_tiles->{$gid} ||
                 Games::TMX::Parser::Tile->new(id => $gid, tileset => $self);
             push @tiles, $tile;
         }
@@ -289,6 +308,8 @@ has map => (is => 'ro', required => 1, weak_ref => 1, handles => [qw(
 )]);
 
 has rows => (is => 'ro', lazy_build => 1);
+
+has index => ( is => 'ro', default => 0 );
 
 extends 'Games::TMX::Parser::MapElement';
 
