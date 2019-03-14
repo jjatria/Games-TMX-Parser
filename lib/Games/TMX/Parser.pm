@@ -199,8 +199,8 @@ sub _build_tilesets {
 
 sub _build_width       { shift->att('width') }
 sub _build_height      { shift->att('height') }
-sub _build_tile_width  { shift->att('tile_width') }
-sub _build_tile_height { shift->att('tile_height') }
+sub _build_tile_width  { shift->att('tilewidth') }
+sub _build_tile_height { shift->att('tileheight') }
 
 sub get_layer { shift->layers->{pop()} }
 sub get_tile  { shift->tiles_by_id->{pop()} }
