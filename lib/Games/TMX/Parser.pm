@@ -372,6 +372,8 @@ package Games::TMX::Parser::Layer;
 
 use Moose;
 use List::MoreUtils qw(natatime);
+use MIME::Base64 qw(decode_base64);
+use Compress::Zlib;
 
 has map => (is => 'ro', required => 1, weak_ref => 1, handles => [qw(
     width height tile_width tile_height get_tile
@@ -385,22 +387,57 @@ extends 'Games::TMX::Parser::MapElement';
 
 sub _build_rows {
     my $self = shift;
+
+    my $data = $self->first_child('data');
+    my $encoding    = $data->att('encoding') // '';
+    my $compression = $data->att('compression') // '';
+
+    my @element_ids;
+
+    if ( $encoding eq 'csv' ) {
+        my $text = $data->text;
+        $text =~ s/\s//g;
+        @element_ids = split /,/, $text;
+    }
+    elsif ( $encoding eq 'base64' ) {
+        my $decoded = decode_base64 $data->text;
+
+        if ( $compression eq 'zlib' ) {
+            $decoded = Compress::Zlib::uncompress( $decoded );
+        }
+        elsif ( $compression eq 'gzip' ) {
+            $decoded = Compress::Zlib::memGunzip( $decoded );
+        }
+
+        @element_ids = unpack 'V*', $decoded;
+    }
+
+    unless (@element_ids) {
+        @element_ids = map { $_->att('gid') } $data->children('tile');
+    }
+
     my @rows;
-    my $it = natatime $self->width, $self->first_child->children('tile');
+    my $it = natatime $self->width, @element_ids;
     my $y = 0;
-    while (my @row = $it->()) {
+
+    while ( my @row = $it->() ) {
         my $x = 0;
-        push @rows, [map {
-            my $el = $_;
-            my $id = $el->att('gid');
-            my $tile;
-            $tile = $self->get_tile($id) if $id;
-            Games::TMX::Parser::Cell->new
-                (x => $x++, y => $y, tile => $tile, layer => $self)
-        } @row];
+
+        push @rows, [
+            map {
+                Games::TMX::Parser::Cell->new(
+                    x     => $x++,
+                    y     => $y,
+                    tile  => $self->get_tile($_),
+                    layer => $self
+                )
+            } @row
+        ];
+
         $y++;
     }
-    return [@rows];
+
+    return \@rows;
 }
 
 sub find_cells_with_property {
