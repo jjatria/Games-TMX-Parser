@@ -133,31 +133,34 @@ at your option, any later version of Perl 5 you may have available.
 
 package Games::TMX::Parser;
 
-use Moose;
+use Moo;
+use Types::Standard qw( Str );
 use File::Spec;
 
-has [qw(map_dir map_file)] => (is => 'ro', isa => 'Str', required => 1);
+has [qw(map_dir map_file)] => (is => 'ro', isa => Str, required => 1);
 
-has map => (is => 'ro', lazy_build => 1, handles => [qw(get_layer)]);
+has map => (
+    is => 'ro',
+    lazy => 1,
+    handles => [qw( get_layer )],
+    default => sub {
+        my $self = shift;
+        Games::TMX::Parser::Map->parsefile(
+            File::Spec->catfile( $self->map_dir, $self->map_file ),
+            root_dir => $self->map_dir,
+        );
+    },
+);
 
-has twig => (is => 'ro', lazy_build => 1);
+has twig => (is => 'ro', lazy => 1, default => sub { shift->map->twig } );
 
-# Not really needed anymore. Keeping for backwards compatibility
-sub _build_twig { shift->map->twig }
-
-sub _build_map {
-    my $self = shift;
-    Games::TMX::Parser::Map->parsefile(
-        File::Spec->catfile( $self->map_dir, $self->map_file ),
-        root_dir => $self->map_dir,
-    );
-}
 
 # ------------------------------------------------------------------------------
 
 package Games::TMX::Parser::MapElement;
 
-use Moose;
+use Moo;
+use Types::Standard qw( HashRef );
 
 has el => (is => 'ro', required => 1, handles => [qw(
     att att_exists first_child children print
@@ -165,7 +168,7 @@ has el => (is => 'ro', required => 1, handles => [qw(
 
 has properties => (
     is      => 'ro',
-    isa     => 'HashRef',
+    isa     => HashRef,
     lazy    => 1,
     default => sub {
         return {} unless $_[0]->el;
@@ -194,67 +197,95 @@ sub get_prop { shift->properties->{ +shift } }
 
 package Games::TMX::Parser::Map;
 
-use Moose;
+use Moo;
+use Types::Standard qw( Str );
 use File::Spec;
 use XML::Twig;
 
 extends 'Games::TMX::Parser::MapElement';
 
-has root_dir => ( is => 'ro', isa => 'Str', default => '.' );
+has root_dir => ( is => 'ro', isa => Str, default => '.' );
 
 has twig => ( is => 'ro' );
 
-has [qw(layers tilesets width height tile_width tile_height tiles_by_id)] =>
-    (is => 'ro', lazy_build => 1);
+has width => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('width') },
+);
 
-sub _build_layers {
-    my $self = shift;
+has height => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('height') },
+);
 
-    my %layers;
-    my $index = 0;
+has tile_width => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('tilewidth') },
+);
 
-    for my $layer ( $self->children('layer') ) {
-        $layers{ $layer->att('name') } = Games::TMX::Parser::Layer->new(
-            el    => $layer,
-            map   => $self,
-            index => $index++,
-        );
-    }
+has tile_height => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('tileheight') },
+);
 
-    return \%layers;
-}
+has layers => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
 
-sub _build_tiles_by_id {
-    my $self  = shift;
-    my @tiles = map { @{$_->tiles} } @{ $self->tilesets };
-    return {map { $_->id => $_ } @tiles};
-}
+        my %layers;
+        my $index = 0;
 
-sub _build_tilesets {
-    my $self = shift;
-
-    my @sets;
-
-    for my $set ( $self->children('tileset') ) {
-        if ( ! $set->children && $set->att('source') ) {
-            push @sets, Games::TMX::Parser::TileSet->parsefile(
-                File::Spec->catfile( $self->root_dir, $set->att('source') ),
-                first_gid => $set->att('firstgid'),
-                root_dir  => $self->root_dir,
+        for my $layer ( $self->children('layer') ) {
+            $layers{ $layer->att('name') } = Games::TMX::Parser::Layer->new(
+                el    => $layer,
+                map   => $self,
+                index => $index++,
             );
         }
-        else {
-            push @sets, Games::TMX::Parser::TileSet->new( el => $set );
+
+        return \%layers;
+    },
+);
+
+has tiles_by_id => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my @tiles = map { @{$_->tiles} } @{ shift->tilesets };
+        return {map { $_->id => $_ } @tiles};
+    },
+);
+
+has tilesets => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
+
+        my @sets;
+
+        for my $set ( $self->children('tileset') ) {
+            if ( ! $set->children && $set->att('source') ) {
+                push @sets, Games::TMX::Parser::TileSet->parsefile(
+                    File::Spec->catfile( $self->root_dir, $set->att('source') ),
+                    first_gid => $set->att('firstgid'),
+                    root_dir  => $self->root_dir,
+                );
+            }
+            else {
+                push @sets, Games::TMX::Parser::TileSet->new( el => $set );
+            }
         }
-    }
 
-    return \@sets;
-}
-
-sub _build_width       { shift->att('width') }
-sub _build_height      { shift->att('height') }
-sub _build_tile_width  { shift->att('tilewidth') }
-sub _build_tile_height { shift->att('tileheight') }
+        return \@sets;
+    },
+);
 
 sub get_layer { shift->layers->{pop()} }
 sub get_tile  { shift->tiles_by_id->{pop()} }
@@ -282,85 +313,124 @@ sub parsefile {
 
 package Games::TMX::Parser::TileSet;
 
-use Moose;
+use Moo;
+use Types::Standard qw( Str );
 use List::MoreUtils qw(natatime);
 use XML::Twig;
 use File::Spec;
 
 extends 'Games::TMX::Parser::MapElement';
 
-has root_dir => ( is => 'ro', isa => 'Str', default => '.' );
+has root_dir => ( is => 'ro', isa => Str, default => '.' );
 
 has twig => ( is => 'ro' );
 
-has [qw(first_gid image tiles width height tile_width tile_height tile_count)] =>
-    (is => 'ro', lazy_build => 1);
+has tiles => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
+        my $first_gid = $self->first_gid;
 
-sub _build_tiles {
-    my $self = shift;
-    my $first_gid = $self->first_gid;
+        # index tiles with properties
 
-    # index tiles with properties
+        my %prop_tiles;
 
-    my %prop_tiles;
+        for my $tile ( $self->children('tile') ) {
+            my $id = $first_gid + $tile->att('id');
+            my $el = $tile->first_child('properties') or next;
 
-    for my $tile ( $self->children('tile') ) {
-        my $id = $first_gid + $tile->att('id');
-        my $el = $tile->first_child('properties') or next;
+            my %props;
 
-        my %props;
-
-        for ( $el->children ) {
-            my $type = $_->att('type') // '';
-            if ( $type eq 'boolean' ) {
-                $props{ $_->att('name') } = $_->att('value') eq 'true';
+            for ( $el->children ) {
+                my $type = $_->att('type') // '';
+                if ( $type eq 'boolean' ) {
+                    $props{ $_->att('name') } = $_->att('value') eq 'true';
+                }
+                else {
+                    $props{ $_->att('name') } = $_->att('value');
+                }
             }
-            else {
-                $props{ $_->att('name') } = $_->att('value');
-            }
+
+            $prop_tiles{$id} = Games::TMX::Parser::Tile->new(
+                id         => $id,
+                properties => \%props,
+                tileset    => $self,
+            );
         }
 
-        $prop_tiles{$id} = Games::TMX::Parser::Tile->new(
-            id         => $id,
-            properties => \%props,
-            tileset    => $self,
+        # create a tile object for each tile in the tileset
+        # unless it is a tile with properties
+        my @tiles;
+        my $it = natatime $self->width, 0 .. $self->tile_count - 1;
+        while (my @ids = $it->()) {
+            for my $id (@ids) {
+                my $gid = $first_gid + $id;
+                my $tile = $prop_tiles{$gid} ||
+                    Games::TMX::Parser::Tile->new(id => $gid, tileset => $self);
+                push @tiles, $tile;
+            }
+        }
+        return [@tiles];
+    },
+);
+
+has tile_count => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
+        return ($self->width      * $self->height     ) /
+               ($self->tile_width * $self->tile_height);
+    },
+);
+
+has columns => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('columns') },
+);
+
+has first_gid => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('firstgid') },
+);
+
+has tile_width => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('tilewidth') },
+);
+
+has tile_height => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->att('tileheight') },
+);
+
+has width => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->first_child('image')->att('width') },
+);
+
+has height => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->first_child('image')->att('height') },
+);
+
+has image => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
+        File::Spec->catfile(
+            $self->root_dir, $self->first_child('image')->att('source')
         );
-    }
-
-    # create a tile object for each tile in the tileset
-    # unless it is a tile with properties
-    my @tiles;
-    my $it = natatime $self->width, 0 .. $self->tile_count - 1;
-    while (my @ids = $it->()) {
-        for my $id (@ids) {
-            my $gid = $first_gid + $id;
-            my $tile = $prop_tiles{$gid} ||
-                Games::TMX::Parser::Tile->new(id => $gid, tileset => $self);
-            push @tiles, $tile;
-        }
-    }
-    return [@tiles];
-}
-
-sub _build_tile_count {
-    my $self = shift;
-    return ($self->width      * $self->height     ) /
-           ($self->tile_width * $self->tile_height);
-}
-
-sub _build_columns     { shift->att('columns') }
-sub _build_first_gid   { shift->att('firstgid') }
-sub _build_tile_width  { shift->att('tilewidth') }
-sub _build_tile_height { shift->att('tileheight') }
-sub _build_width       { shift->first_child('image')->att('width') }
-sub _build_height      { shift->first_child('image')->att('height') }
-
-sub _build_image {
-    my $self = shift;
-    File::Spec->catfile(
-        $self->root_dir, $self->first_child('image')->att('source')
-    );
-}
+    },
+);
 
 sub parsefile {
     my $class = shift;
@@ -376,9 +446,10 @@ sub parsefile {
 
 package Games::TMX::Parser::Tile;
 
-use Moose;
+use Moo;
+use Types::Standard qw( HashRef Int );
 
-has id      => (is => 'ro', isa => 'Int', required => 1);
+has id      => (is => 'ro', isa => Int, required => 1);
 has tileset => (is => 'ro', weak_ref => 1, required => 1);
 
 has 'x' => (
@@ -401,7 +472,7 @@ has 'y' => (
     },
 );
 
-has properties => (is => 'ro', isa => 'HashRef', default => sub { {} });
+has properties => (is => 'ro', isa => HashRef, default => sub { {} });
 
 sub get_prop {
     my ($self, $name) = @_;
@@ -412,7 +483,7 @@ sub get_prop {
 
 package Games::TMX::Parser::Layer;
 
-use Moose;
+use Moo;
 use List::MoreUtils qw(natatime);
 use MIME::Base64 qw(decode_base64);
 use Compress::Zlib;
@@ -421,66 +492,68 @@ has map => (is => 'ro', required => 1, weak_ref => 1, handles => [qw(
     width height tile_width tile_height get_tile
 )]);
 
-has rows => (is => 'ro', lazy_build => 1);
-
 has index => ( is => 'ro', default => 0 );
 
 extends 'Games::TMX::Parser::MapElement';
 
-sub _build_rows {
-    my $self = shift;
+has rows => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $self = shift;
 
-    my $data = $self->first_child('data');
-    my $encoding    = $data->att('encoding') // '';
-    my $compression = $data->att('compression') // '';
+        my $data = $self->first_child('data');
+        my $encoding    = $data->att('encoding') // '';
+        my $compression = $data->att('compression') // '';
 
-    my @element_ids;
+        my @element_ids;
 
-    if ( $encoding eq 'csv' ) {
-        my $text = $data->text;
-        $text =~ s/\s//g;
-        @element_ids = split /,/, $text;
-    }
-    elsif ( $encoding eq 'base64' ) {
-        my $decoded = decode_base64 $data->text;
-
-        if ( $compression eq 'zlib' ) {
-            $decoded = Compress::Zlib::uncompress( $decoded );
+        if ( $encoding eq 'csv' ) {
+            my $text = $data->text;
+            $text =~ s/\s//g;
+            @element_ids = split /,/, $text;
         }
-        elsif ( $compression eq 'gzip' ) {
-            $decoded = Compress::Zlib::memGunzip( $decoded );
+        elsif ( $encoding eq 'base64' ) {
+            my $decoded = decode_base64 $data->text;
+
+            if ( $compression eq 'zlib' ) {
+                $decoded = Compress::Zlib::uncompress( $decoded );
+            }
+            elsif ( $compression eq 'gzip' ) {
+                $decoded = Compress::Zlib::memGunzip( $decoded );
+            }
+
+            @element_ids = unpack 'V*', $decoded;
         }
 
-        @element_ids = unpack 'V*', $decoded;
-    }
+        unless (@element_ids) {
+            @element_ids = map { $_->att('gid') } $data->children('tile');
+        }
 
-    unless (@element_ids) {
-        @element_ids = map { $_->att('gid') } $data->children('tile');
-    }
+        my @rows;
+        my $it = natatime $self->width, @element_ids;
+        my $y = 0;
 
-    my @rows;
-    my $it = natatime $self->width, @element_ids;
-    my $y = 0;
+        while ( my @row = $it->() ) {
+            my $x = 0;
 
-    while ( my @row = $it->() ) {
-        my $x = 0;
+            push @rows, [
+                map {
+                    Games::TMX::Parser::Cell->new(
+                        x     => $x++,
+                        y     => $y,
+                        tile  => $self->get_tile($_),
+                        layer => $self
+                    )
+                } @row
+            ];
 
-        push @rows, [
-            map {
-                Games::TMX::Parser::Cell->new(
-                    x     => $x++,
-                    y     => $y,
-                    tile  => $self->get_tile($_),
-                    layer => $self
-                )
-            } @row
-        ];
+            $y++;
+        }
 
-        $y++;
-    }
-
-    return \@rows;
-}
+        return \@rows;
+    },
+);
 
 sub find_cells_with_property {
     my ($self, $prop) = @_;
@@ -502,9 +575,10 @@ sub all_cells { return map { @$_ } @{ shift->rows } }
 
 package Games::TMX::Parser::Cell;
 
-use Moose;
+use Moo;
+use Types::Standard qw( Int );
 
-has [qw(x y)] => (is => 'ro', isa => 'Int', required => 1);
+has [qw(x y)] => (is => 'ro', isa => Int, required => 1);
 
 has tile => (is => 'ro');
 
