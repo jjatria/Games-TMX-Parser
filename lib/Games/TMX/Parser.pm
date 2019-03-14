@@ -135,7 +135,6 @@ package Games::TMX::Parser;
 
 use Moose;
 use File::Spec;
-use XML::Twig;
 
 has [qw(map_dir map_file)] => (is => 'ro', isa => 'Str', required => 1);
 
@@ -143,17 +142,15 @@ has map => (is => 'ro', lazy_build => 1, handles => [qw(get_layer)]);
 
 has twig => (is => 'ro', lazy_build => 1);
 
-sub _build_twig {
-    my $self = shift;
-    my $twig = XML::Twig->new;
-    $twig->parsefile
-        ( File::Spec->catfile($self->map_dir, $self->map_file) );
-    return $twig;
-}
+# Not really needed anymore. Keeping for backwards compatibility
+sub _build_twig { shift->map->twig }
 
 sub _build_map {
     my $self = shift;
-    return Games::TMX::Parser::Map->new(el => $self->twig->root);
+    Games::TMX::Parser::Map->parsefile(
+        File::Spec->catfile( $self->map_dir, $self->map_file ),
+        root_dir => $self->map_dir,
+    );
 }
 
 # ------------------------------------------------------------------------------
@@ -171,8 +168,14 @@ has el => (is => 'ro', required => 1, handles => [qw(
 package Games::TMX::Parser::Map;
 
 use Moose;
+use File::Spec;
+use XML::Twig;
 
 extends 'Games::TMX::Parser::MapElement';
+
+has root_dir => ( is => 'ro', isa => 'Str', default => '.' );
+
+has twig => ( is => 'ro' );
 
 has [qw(layers tilesets width height tile_width tile_height tiles_by_id)] =>
     (is => 'ro', lazy_build => 1);
@@ -192,9 +195,23 @@ sub _build_tiles_by_id {
 
 sub _build_tilesets {
     my $self = shift;
-    return [map {
-        Games::TMX::Parser::TileSet->new(el => $_)
-    } $self->children('tileset') ];
+
+    my @sets;
+
+    for my $set ( $self->children('tileset') ) {
+        if ( ! $set->children && $set->att('source') ) {
+            push @sets, Games::TMX::Parser::TileSet->parsefile(
+                File::Spec->catfile( $self->root_dir, $set->att('source') ),
+                first_gid => $set->att('firstgid'),
+                root_dir  => $self->root_dir,
+            );
+        }
+        else {
+            push @sets, Games::TMX::Parser::TileSet->new( el => $set );
+        }
+    }
+
+    return \@sets;
 }
 
 sub _build_width       { shift->att('width') }
@@ -205,14 +222,30 @@ sub _build_tile_height { shift->att('tile_height') }
 sub get_layer { shift->layers->{pop()} }
 sub get_tile  { shift->tiles_by_id->{pop()} }
 
+sub parsefile {
+    my $class = shift;
+    my $path  = shift;
+
+    my $twig = XML::Twig->new;
+    $twig->parsefile($path);
+
+    return $class->new( el => $twig->root, twig => $twig, @_ );
+}
+
 # ------------------------------------------------------------------------------
 
 package Games::TMX::Parser::TileSet;
 
 use Moose;
 use List::MoreUtils qw(natatime);
+use XML::Twig;
+use File::Spec;
 
 extends 'Games::TMX::Parser::MapElement';
+
+has root_dir => ( is => 'ro', isa => 'Str', default => '.' );
+
+has twig => ( is => 'ro' );
 
 has [qw(first_gid image tiles width height tile_width tile_height tile_count)] =>
     (is => 'ro', lazy_build => 1);
@@ -257,9 +290,25 @@ sub _build_tile_count {
 sub _build_first_gid   { shift->att('firstgid') }
 sub _build_tile_width  { shift->att('tilewidth') }
 sub _build_tile_height { shift->att('tileheight') }
-sub _build_image       { shift->first_child('image')->att('source') }
 sub _build_width       { shift->first_child('image')->att('width') }
 sub _build_height      { shift->first_child('image')->att('height') }
+
+sub _build_image {
+    my $self = shift;
+    File::Spec->catfile(
+        $self->root_dir, $self->first_child('image')->att('source')
+    );
+}
+
+sub parsefile {
+    my $class = shift;
+    my $path  = shift;
+
+    my $twig = XML::Twig->new;
+    $twig->parsefile($path);
+
+    return $class->new( el => $twig->root, twig => $twig, @_ );
+}
 
 # ------------------------------------------------------------------------------
 
