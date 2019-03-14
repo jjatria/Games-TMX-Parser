@@ -163,6 +163,33 @@ has el => (is => 'ro', required => 1, handles => [qw(
     att att_exists first_child children print
 )]);
 
+has properties => (
+    is      => 'ro',
+    isa     => 'HashRef',
+    lazy    => 1,
+    default => sub {
+        return {} unless $_[0]->el;
+
+        my $el = $_[0]->first_child('properties') or return {};
+
+        my %props;
+
+        for ( $el->children ) {
+            my $type = $_->att('type') // '';
+            if ( $type eq 'boolean' ) {
+                $props{ $_->att('name') } = $_->att('value') eq 'true';
+            }
+            else {
+                $props{ $_->att('name') } = $_->att('value');
+            }
+        }
+
+        return \%props;
+    },
+);
+
+sub get_prop { shift->properties->{ +shift } }
+
 # ------------------------------------------------------------------------------
 
 package Games::TMX::Parser::Map;
@@ -274,16 +301,31 @@ sub _build_tiles {
     my $first_gid = $self->first_gid;
 
     # index tiles with properties
-    my $prop_tiles = {map {
-        my $el = $_;
-        my $id = $first_gid + $el->att('id');
-        my $properties = {map {
-           $_->att('name'), $_->att('value')
-        } $el->first_child('properties')->children};
-        my $tile = Games::TMX::Parser::Tile->new
-            (id => $id, properties => $properties, tileset => $self);
-        ($id => $tile);
-    } $self->children('tile')};
+
+    my %prop_tiles;
+
+    for my $tile ( $self->children('tile') ) {
+        my $id = $first_gid + $tile->att('id');
+        my $el = $tile->first_child('properties') or next;
+
+        my %props;
+
+        for ( $el->children ) {
+            my $type = $_->att('type') // '';
+            if ( $type eq 'boolean' ) {
+                $props{ $_->att('name') } = $_->att('value') eq 'true';
+            }
+            else {
+                $props{ $_->att('name') } = $_->att('value');
+            }
+        }
+
+        $prop_tiles{$id} = Games::TMX::Parser::Tile->new(
+            id         => $id,
+            properties => \%props,
+            tileset    => $self,
+        );
+    }
 
     # create a tile object for each tile in the tileset
     # unless it is a tile with properties
@@ -292,7 +334,7 @@ sub _build_tiles {
     while (my @ids = $it->()) {
         for my $id (@ids) {
             my $gid = $first_gid + $id;
-            my $tile = $prop_tiles->{$gid} ||
+            my $tile = $prop_tiles{$gid} ||
                 Games::TMX::Parser::Tile->new(id => $gid, tileset => $self);
             push @tiles, $tile;
         }

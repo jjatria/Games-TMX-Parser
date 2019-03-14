@@ -1,5 +1,11 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <map version="1.0" orientation="orthogonal" width="25" height="17" tilewidth="25" tileheight="25">
+ <properties>
+  <property name="map-raw" value="1"/>
+  <property name="map-false" type="boolean" value="false"/>
+  <property name="map-true" type="boolean" value="true"/>
+  <property name="map-var" type="string" value="false"/>
+ </properties>
  <tileset firstgid="1" name="towers" tilewidth="25" tileheight="25">
   <image source="towers.png" width="100" height="75"/>
   <tile id="0">
@@ -9,6 +15,12 @@
   </tile>
  </tileset>
  <tileset firstgid="13" name="tiles" tilewidth="25" tileheight="25">
+  <properties>
+   <property name="tileset-raw" value="1"/>
+   <property name="tileset-false" type="boolean" value="false"/>
+   <property name="tileset-true" type="boolean" value="true"/>
+   <property name="tileset-var" type="string" value="false"/>
+  </properties>
   <image source="tiles.png" width="100" height="125"/>
   <tile id="12">
    <properties>
@@ -52,6 +64,12 @@
   </tile>
  </tileset>
  <layer name="path" width="25" height="17">
+  <properties>
+   <property name="layer-raw" value="1"/>
+   <property name="layer-false" type="boolean" value="false"/>
+   <property name="layer-true" type="boolean" value="true"/>
+   <property name="layer-var" type="string" value="false"/>
+  </properties>
   <data>
    <tile gid="0"/>
    <tile gid="0"/>
