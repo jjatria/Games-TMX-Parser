@@ -236,7 +236,7 @@ sub _build_tiles {
     # create a tile object for each tile in the tileset
     # unless it is a tile with properties
     my @tiles;
-    my $it = natatime $self->width, 1..$self->tile_count;
+    my $it = natatime $self->width, 0 .. $self->tile_count - 1;
     while (my @ids = $it->()) {
         for my $id (@ids) {
             my $gid = $first_gid + $id;
