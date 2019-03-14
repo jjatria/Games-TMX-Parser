@@ -182,9 +182,19 @@ has [qw(layers tilesets width height tile_width tile_height tiles_by_id)] =>
 
 sub _build_layers {
     my $self = shift;
-    return {map { $_->att('name') =>
-        Games::TMX::Parser::Layer->new(el => $_, map => $self)
-    } $self->children('layer') };
+
+    my %layers;
+    my $index = 0;
+
+    for my $layer ( $self->children('layer') ) {
+        $layers{ $layer->att('name') } = Games::TMX::Parser::Layer->new(
+            el    => $layer,
+            map   => $self,
+            index => $index++,
+        );
+    }
+
+    return \%layers;
 }
 
 sub _build_tiles_by_id {
@@ -221,6 +231,15 @@ sub _build_tile_height { shift->att('tileheight') }
 
 sub get_layer { shift->layers->{pop()} }
 sub get_tile  { shift->tiles_by_id->{pop()} }
+
+has ordered_layers => (
+    is => 'ro',
+    init_arg => undef,
+    lazy => 1,
+    default => sub {
+        [ sort { $a->index <=> $b->index } values %{ shift->layers } ];
+    },
+);
 
 sub parsefile {
     my $class = shift;
@@ -359,6 +378,8 @@ has map => (is => 'ro', required => 1, weak_ref => 1, handles => [qw(
 )]);
 
 has rows => (is => 'ro', lazy_build => 1);
+
+has index => ( is => 'ro', default => 0 );
 
 extends 'Games::TMX::Parser::MapElement';
 
