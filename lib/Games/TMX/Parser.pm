@@ -79,7 +79,7 @@ want to read in Perl. Then in your Perl game, read the map and use:
 
     my @cells = $map->get_layer('layer_with_stuff')
                     ->find_cells_with_property('my_special_tile_marker');
- 
+
 To find your special cells (spawn points, enemy locations, etc.).
 
 Draw a layer by iteating over:
@@ -216,8 +216,8 @@ sub _build_tilesets {
 
 sub _build_width       { shift->att('width') }
 sub _build_height      { shift->att('height') }
-sub _build_tile_width  { shift->att('tile_width') }
-sub _build_tile_height { shift->att('tile_height') }
+sub _build_tile_width  { shift->att('tilewidth') }
+sub _build_tile_height { shift->att('tileheight') }
 
 sub get_layer { shift->layers->{pop()} }
 sub get_tile  { shift->tiles_by_id->{pop()} }
@@ -259,7 +259,7 @@ sub _build_tiles {
         my $el = $_;
         my $id = $first_gid + $el->att('id');
         my $properties = {map {
-           $_->att('name'), $_->att('value') 
+           $_->att('name'), $_->att('value')
         } $el->first_child('properties')->children};
         my $tile = Games::TMX::Parser::Tile->new
             (id => $id, properties => $properties, tileset => $self);
@@ -273,7 +273,7 @@ sub _build_tiles {
     while (my @ids = $it->()) {
         for my $id (@ids) {
             my $gid = $first_gid + $id;
-            my $tile = $prop_tiles->{$gid} || 
+            my $tile = $prop_tiles->{$gid} ||
                 Games::TMX::Parser::Tile->new(id => $gid, tileset => $self);
             push @tiles, $tile;
         }
@@ -287,6 +287,7 @@ sub _build_tile_count {
            ($self->tile_width * $self->tile_height);
 }
 
+sub _build_columns     { shift->att('columns') }
 sub _build_first_gid   { shift->att('firstgid') }
 sub _build_tile_width  { shift->att('tilewidth') }
 sub _build_tile_height { shift->att('tileheight') }
@@ -318,6 +319,26 @@ use Moose;
 
 has id      => (is => 'ro', isa => 'Int', required => 1);
 has tileset => (is => 'ro', weak_ref => 1, required => 1);
+
+has 'x' => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $tileset = $_[0]->tileset;
+        my $local_id = $_[0]->id - $tileset->first_gid;
+        return $local_id % $tileset->columns;
+    },
+);
+
+has 'y' => (
+    is => 'ro',
+    lazy => 1,
+    default => sub {
+        my $tileset = $_[0]->tileset;
+        my $local_id = $_[0]->id - $tileset->first_gid;
+        return int( $local_id / $tileset->columns );
+    },
+);
 
 has properties => (is => 'ro', isa => 'HashRef', default => sub { {} });
 
