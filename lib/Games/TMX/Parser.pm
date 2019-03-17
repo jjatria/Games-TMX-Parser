@@ -133,6 +133,8 @@ at your option, any later version of Perl 5 you may have available.
 
 package Games::TMX::Parser;
 
+our $VERSION = '1.000000';
+
 use Moo;
 use Types::Standard qw( Str );
 use File::Spec;
