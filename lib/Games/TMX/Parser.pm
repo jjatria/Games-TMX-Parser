@@ -1,3 +1,34 @@
+package Games::TMX::Parser;
+
+our $VERSION = '1.000000';
+
+use Moo;
+use Types::Standard qw( Str );
+use File::Spec;
+use Games::TMX::Parser::Map;
+
+use namespace::clean;
+
+has [qw(map_dir map_file)] => (is => 'ro', isa => Str, required => 1);
+
+has map => (
+    is => 'ro',
+    lazy => 1,
+    handles => [qw( get_layer )],
+    default => sub {
+        my $self = shift;
+        Games::TMX::Parser::Map->parsefile(
+            File::Spec->catfile( $self->map_dir, $self->map_file ),
+            root_dir => $self->map_dir,
+        );
+    },
+);
+
+has twig => (is => 'ro', lazy => 1, default => sub { shift->map->twig } );
+
+1;
+
+__END__
 
 =head1 NAME
 
@@ -128,35 +159,3 @@ Copyright (C) 2011 by Ran Eilam
 This library is free software; you can redistribute it and/or modify
 it under the same terms as Perl itself, either Perl version 5.10.1 or,
 at your option, any later version of Perl 5 you may have available.
-
-=cut
-
-package Games::TMX::Parser;
-
-our $VERSION = '1.000000';
-
-use Moo;
-use Types::Standard qw( Str );
-use File::Spec;
-use Games::TMX::Parser::Map;
-
-use namespace::clean;
-
-has [qw(map_dir map_file)] => (is => 'ro', isa => Str, required => 1);
-
-has map => (
-    is => 'ro',
-    lazy => 1,
-    handles => [qw( get_layer )],
-    default => sub {
-        my $self = shift;
-        Games::TMX::Parser::Map->parsefile(
-            File::Spec->catfile( $self->map_dir, $self->map_file ),
-            root_dir => $self->map_dir,
-        );
-    },
-);
-
-has twig => (is => 'ro', lazy => 1, default => sub { shift->map->twig } );
-
-1;
