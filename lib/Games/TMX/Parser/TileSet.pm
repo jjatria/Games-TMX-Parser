@@ -1,5 +1,7 @@
 package Games::TMX::Parser::TileSet;
 
+our $VERSION = '1.000000';
+
 use Moo;
 use Types::Standard qw( Str );
 use List::MoreUtils qw(natatime);

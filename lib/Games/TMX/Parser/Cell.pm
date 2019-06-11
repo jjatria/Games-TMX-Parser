@@ -1,5 +1,7 @@
 package Games::TMX::Parser::Cell;
 
+our $VERSION = '1.000000';
+
 use Moo;
 use Types::Standard qw( Int );
 

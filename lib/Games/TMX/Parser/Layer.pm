@@ -1,5 +1,7 @@
 package Games::TMX::Parser::Layer;
 
+our $VERSION = '1.000000';
+
 use Moo;
 use List::MoreUtils qw(natatime);
 use MIME::Base64 qw(decode_base64);
