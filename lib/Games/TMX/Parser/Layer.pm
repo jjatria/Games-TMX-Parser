@@ -6,6 +6,8 @@ use MIME::Base64 qw(decode_base64);
 use Compress::Zlib;
 use Games::TMX::Parser::Cell;
 
+use namespace::clean;
+
 has map => (is => 'ro', required => 1, weak_ref => 1, handles => [qw(
     width height tile_width tile_height get_tile
 )]);

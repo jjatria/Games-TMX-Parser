@@ -3,6 +3,8 @@ package Games::TMX::Parser::Cell;
 use Moo;
 use Types::Standard qw( Int );
 
+use namespace::clean;
+
 has [qw(x y)] => (is => 'ro', isa => Int, required => 1);
 
 has tile => (is => 'ro');

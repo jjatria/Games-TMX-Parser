@@ -7,6 +7,8 @@ use XML::Twig;
 use Games::TMX::Parser::Layer;
 use Games::TMX::Parser::TileSet;
 
+use namespace::clean;
+
 extends 'Games::TMX::Parser::MapElement';
 
 has root_dir => ( is => 'ro', isa => Str, default => '.' );

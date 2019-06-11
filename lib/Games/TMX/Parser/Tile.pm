@@ -3,6 +3,8 @@ package Games::TMX::Parser::Tile;
 use Moo;
 use Types::Standard qw( HashRef Int );
 
+use namespace::clean;
+
 has id      => (is => 'ro', isa => Int, required => 1);
 has tileset => (is => 'ro', weak_ref => 1, required => 1);
 

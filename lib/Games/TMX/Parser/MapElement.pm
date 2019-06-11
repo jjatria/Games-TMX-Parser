@@ -3,6 +3,8 @@ package Games::TMX::Parser::MapElement;
 use Moo;
 use Types::Standard qw( HashRef );
 
+use namespace::clean;
+
 has el => (is => 'ro', required => 1, handles => [qw(
     att att_exists first_child children print
 )]);

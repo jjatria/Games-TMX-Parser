@@ -140,6 +140,8 @@ use Types::Standard qw( Str );
 use File::Spec;
 use Games::TMX::Parser::Map;
 
+use namespace::clean;
+
 has [qw(map_dir map_file)] => (is => 'ro', isa => Str, required => 1);
 
 has map => (
