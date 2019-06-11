@@ -1,8 +1,8 @@
 package main;
-use strict;
-use warnings;
+
+use Test2::V0;
+
 use FindBin qw($Bin);
-use Test::More;
 use File::Spec;
 use Games::TMX::Parser;
 
@@ -15,16 +15,35 @@ for (qw( tower_defense.tmx split.tmx )) {
 
     my $map = $parser->map;
 
-    is scalar(keys %{$map->layers}), 3, 'layer count';
+    is $map->layers, hash {
+        field path      => E;
+        field towers    => E;
+        field waypoints => E;
 
-    my $waypoints_layer = $map->get_layer('waypoints');
+        all_values object {
+            prop blessed => 'Games::TMX::Parser::Layer';
+        };
 
-    my @spawn_cells = $waypoints_layer->find_cells_with_property('spawn_point');
-    my @leave_cells = $waypoints_layer->find_cells_with_property('leave_point');
+        end;
+    }, 'layer';
 
-    is scalar(@spawn_cells), 1, 'one spawn cell';
-    is scalar(@leave_cells), 1, 'one leave cell';
+    is $map, object {
+        call [ get_layer => 'waypoints' ] => object {
+            call_list [ find_cells_with_property => 'spawn_point' ] => array {
+                item object {
+                    prop blessed => 'Games::TMX::Parser::Cell';
+                };
+                end;
+            };
+
+            call_list [ find_cells_with_property => 'leave_point' ] => array {
+                item object {
+                    prop blessed => 'Games::TMX::Parser::Cell';
+                };
+                end;
+            };
+        };
+    }, 'Get cells by property from layer';
 }
 
 done_testing;
-

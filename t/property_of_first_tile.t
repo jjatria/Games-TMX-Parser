@@ -1,10 +1,8 @@
 package main;
 
-use strict;
-use warnings;
+use Test2::V0;
 
 use FindBin qw($Bin);
-use Test::More;
 use File::Spec;
 use Games::TMX::Parser;
 
@@ -16,6 +14,6 @@ my $map = Games::TMX::Parser->new(
 my @test_towers = $map->get_layer('towers')
     ->find_cells_with_property('test_tower');
 
-is scalar(@test_towers), 3, 'three test towers';
+is \@test_towers, array { prop size => 3; etc }, 'three test towers';
 
 done_testing;
