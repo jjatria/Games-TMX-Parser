@@ -3,6 +3,8 @@ package Games::TMX::Parser::Layer;
 our $VERSION = '1.000000';
 
 use Moo;
+extends 'Games::TMX::Parser::MapElement';
+
 use List::MoreUtils qw(natatime);
 use MIME::Base64 qw(decode_base64);
 use Compress::Zlib;
@@ -10,13 +12,23 @@ use Games::TMX::Parser::Cell;
 
 use namespace::clean;
 
-has map => (is => 'ro', required => 1, weak_ref => 1, handles => [qw(
-    width height tile_width tile_height get_tile
-)]);
+has map => (
+    is => 'ro',
+    required => 1,
+    weak_ref => 1,
+    handles => [qw(
+        width
+        height
+        tile_width
+        tile_height
+        get_tile
+    )],
+);
 
-has index => ( is => 'ro', default => 0 );
-
-extends 'Games::TMX::Parser::MapElement';
+has index => (
+    is => 'ro',
+    default => 0,
+);
 
 has rows => (
     is => 'ro',
@@ -78,17 +90,16 @@ has rows => (
 );
 
 sub find_cells_with_property {
-    my ($self, $prop) = @_;
+    my ( $self, $prop ) = @_;
     return grep {
-        my $cell = $_;
-        my $tile = $cell->tile;
+        my $tile = $_->tile;
         $tile && exists $tile->properties->{$prop};
     } $self->all_cells;
 }
 
 sub get_cell {
     my ($self, $col, $row) = @_;
-    return $self->rows->[$row]->[$col];
+    return $self->rows->[$row][$col];
 }
 
 sub all_cells { return map { @$_ } @{ shift->rows } }

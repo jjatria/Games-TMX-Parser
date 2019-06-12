@@ -9,7 +9,8 @@ use Games::TMX::Parser::Map;
 
 use namespace::clean;
 
-has [qw(map_dir map_file)] => (is => 'ro', isa => Str, required => 1);
+has map_dir  => ( is => 'ro', isa => Str, required => 1 );
+has map_file => ( is => 'ro', isa => Str, required => 1 );
 
 has map => (
     is => 'ro',
@@ -24,7 +25,11 @@ has map => (
     },
 );
 
-has twig => (is => 'ro', lazy => 1, default => sub { shift->map->twig } );
+has twig => (
+    is => 'ro',
+    lazy => 1,
+    default => sub { shift->map->twig },
+);
 
 1;
 
@@ -133,9 +138,6 @@ The distribution contains an example which computes creep waypoint column/row
 for any map with a simple path drawn on it.
 
 =head1 TODO
-
-No support for base64 or compression of maps, uncheck the correct check boxes
-in Tiled before you save.
 
 No support for object layers.
 

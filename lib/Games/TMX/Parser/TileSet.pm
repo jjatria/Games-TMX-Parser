@@ -13,7 +13,11 @@ use namespace::clean;
 
 extends 'Games::TMX::Parser::MapElement';
 
-has root_dir => ( is => 'ro', isa => Str, default => '.' );
+has root_dir => (
+    is => 'ro',
+    isa => Str,
+    default => '.',
+);
 
 has twig => ( is => 'ro' );
 

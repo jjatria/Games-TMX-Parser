@@ -13,7 +13,11 @@ use namespace::clean;
 
 extends 'Games::TMX::Parser::MapElement';
 
-has root_dir => ( is => 'ro', isa => Str, default => '.' );
+has root_dir => (
+    is => 'ro',
+    isa => Str,
+    default => '.',
+);
 
 has twig => ( is => 'ro' );
 
@@ -96,8 +100,8 @@ has tilesets => (
     },
 );
 
-sub get_layer { shift->layers->{pop()} }
-sub get_tile  { shift->tiles_by_id->{pop()} }
+sub get_layer { shift->layers->{ +shift } }
+sub get_tile  { shift->tiles_by_id->{ +shift } }
 
 has ordered_layers => (
     is => 'ro',

@@ -7,9 +7,17 @@ use Types::Standard qw( HashRef );
 
 use namespace::clean;
 
-has el => (is => 'ro', required => 1, handles => [qw(
-    att att_exists first_child children print
-)]);
+has el => (
+    is => 'ro',
+    required => 1,
+    handles => [qw(
+        att
+        att_exists
+        first_child
+        children
+        print
+    )],
+);
 
 has properties => (
     is      => 'ro',

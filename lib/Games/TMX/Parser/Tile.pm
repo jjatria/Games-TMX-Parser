@@ -7,10 +7,27 @@ use Types::Standard qw( HashRef Int );
 
 use namespace::clean;
 
-has id      => (is => 'ro', isa => Int, required => 1);
-has tileset => (is => 'ro', weak_ref => 1, required => 1);
+has id => (
+    is => 'ro',
+    isa => Int,
+    required => 1,
+);
 
-has 'x' => (
+has tileset => (
+    is => 'ro',
+    weak_ref => 1,
+    required => 1,
+);
+
+has properties => (
+    is => 'ro',
+    isa => HashRef,
+    default => sub { {} },
+);
+
+sub get_prop { shift->properties->{ +shift } }
+
+has x => (
     is => 'ro',
     lazy => 1,
     default => sub {
@@ -20,7 +37,7 @@ has 'x' => (
     },
 );
 
-has 'y' => (
+has y => (
     is => 'ro',
     lazy => 1,
     default => sub {
@@ -29,12 +46,5 @@ has 'y' => (
         return int( $local_id / $tileset->columns );
     },
 );
-
-has properties => (is => 'ro', isa => HashRef, default => sub { {} });
-
-sub get_prop {
-    my ($self, $name) = @_;
-    return $self->properties->{$name};
-}
 
 1;
