@@ -342,8 +342,14 @@ has layer => (is => 'ro', required => 1, weak_ref => 1, handles => [qw(
     get_cell width height
 )]);
 
-my %Dirs      = map { $_ => 1 } qw(below left right above);
-my %Anti_Dirs = (below => 'above', left => 'right', right => 'left', above => 'below');
+my @DIRS = qw( left below right above );
+
+my %ANTI_DIRS = (
+    below => 'above',
+    left  => 'right',
+    right => 'left',
+    above => 'below'
+);
 
 sub left  { shift->neighbor(-1, 0) }
 sub right { shift->neighbor( 1, 0) }
@@ -363,13 +369,16 @@ sub neighbor {
 
 sub seek_next_cell {
     my ($self, $dir) = @_;
-    my %dirs = %Dirs;
-    delete $dirs{$Anti_Dirs{$dir}} if $dir;
-    for my $d (keys %dirs) {
-        my $c = $self->$d;
-        return [$c, $d] if $c && $c->tile;
-    }
-    return undef;
-}
 
+    my $opposite = $dir ? $ANTI_DIRS{$dir} : '';
+
+    for my $direction (@DIRS) {
+        next if $direction eq $opposite;
+
+        my $cell = $self->$direction;
+        return [ $cell, $direction ] if $cell && $cell->tile;
+    }
+
+    return;
+}
 1;
