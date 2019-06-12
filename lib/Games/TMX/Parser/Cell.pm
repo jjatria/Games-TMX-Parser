@@ -35,8 +35,10 @@ sub neighbor {
     my ($self, $dx, $dy) = @_;
     my $x = $self->x + $dx;
     my $y = $self->y + $dy;
-    return undef if $x < 0            || $y < 0;
-    return undef if $x > $self->width || $y > $self->height;
+
+    return if $x < 0            || $y < 0;
+    return if $x > $self->width || $y > $self->height;
+
     return $self->get_cell($x, $y);
 }
 
