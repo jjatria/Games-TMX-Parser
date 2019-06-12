@@ -24,7 +24,11 @@ subtest 'Directions' => sub {
         call y => 0;
         call_list xy => [ 3, 0 ];
 
-        call tile => object { call id => 29 };
+        call tile => object {
+            call id => 29;
+            call [ get_prop => 'spawn_point' ] => T;
+            call [ get_prop => 'leave_point' ] => F;
+        };
 
         call left  => object { call x => 2; call y =>  0 };
         call right => object { call x => 4; call y =>  0 };
@@ -37,7 +41,11 @@ subtest 'Directions' => sub {
         call y => 16;
         call_list xy => [ 21, 16 ];
 
-        call tile => object { call id => 27 };
+        call tile => object {
+            call id => 27;
+            call [ get_prop => 'spawn_point' ] => F;
+            call [ get_prop => 'leave_point' ] => T;
+        };
 
         call left  => object { call x => 20; call y => 16 };
         call right => object { call x => 22; call y => 16 };
